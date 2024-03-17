@@ -1,0 +1,2 @@
+# abyss on paired end reads. Kmer 96bp on putative Salmonella genome
+abyss-pe name=salmonella k=96 B=2G in='reads1.fastq.gz reads2.fastq.gz'
