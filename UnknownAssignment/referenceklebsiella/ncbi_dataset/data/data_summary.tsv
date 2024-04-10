@@ -1,0 +1,3 @@
+Organism Scientific Name	Organism Common Name	Organism Qualifier	Taxonomy id	Assembly Name	Assembly Accession	Source	Annotation	Level	Contig N50	Size	Submission Date	Gene Count	BioProject	BioSample
+Klebsiella quasipneumoniae		strain: KqPF26	1463165	ASM1641570v1	GCA_016415705.1	GenBank	NCBI Prokaryotic Genome Annotation Pipeline (PGAP)	Complete Genome	5242686	5391123	2020-12-15	5217	PRJNA683049	SAMN17016750
+Klebsiella quasipneumoniae		strain: KqPF26	1463165	ASM1641570v1	GCF_016415705.1	RefSeq	NCBI Prokaryotic Genome Annotation Pipeline (PGAP)	Complete Genome	5242686	5391123	2020-12-15	5244	PRJNA683049	SAMN17016750
