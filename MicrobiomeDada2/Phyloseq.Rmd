@@ -1,0 +1,73 @@
+---
+title: "Phyloseq"
+author: "Alejandra"
+date: "2024-04-18"
+output: pdf_document
+---
+
+#instal BiocManager
+```{r}
+(!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install(version = "3.18")
+BiocManager::install(c("Phyloseq))
+```
+#load required packages
+```{r}
+library(phyloseq)
+library(dplyr)
+library(BiMiCo)
+``` 
+
+#load taxa and seqtab.nochim
+```{r}
+load("RData/taxa.RData")
+load("RData/seqtab.nochim.RData")
+```
+
+#import metadata
+```{r}
+metadata <- read.csv("sample-metadata.csv", header=TRUE, row.names = 1)
+```
+
+#create phylseq object
+```{r}
+#make sure the seqtab.nochim and taxa objects are loaded
+physeq <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows=FALSE), sample_data(metadata),tax_table(taxa))
+physeq
+```
+
+#transform sample counts
+```{r}
+#convert from raw to abundance so its easier to comapre
+physeq <- transform_sample_counts(physeq, function(abund) 1*(abund>0))
+
+#visualize to data
+physeq
+```
+
+#remove the sequence itselt and replace with ASV
+```{r}
+##this allows it to be easier to read, replaces the raw data
+dna <- Biostrings::DNAStringSet(taxa_names(physeq))
+names(dna) <- taxa_names(physeq)
+physeq <- merge_phyloseq(physeq, dna)
+taxa_names(physeq) <- paste0("ASV", seq(ntaxa(physeq)))
+physeq
+```
+#remove mitochondria and phloroplast mathces, remove all non bacterial sequences
+```{r}
+#stictly use bacteria 16S rRNA, 
+physeq <- physeq %>% subset_taxa( Family!= "Mitochondria" | is.na(Family) & Order!="Chloroplast" | is.na(Order))
+physeq
+```
+#remove all non bacterial sequences
+```{r}
+physeq<-rm_nonbac(physeq)
+physeq
+```
+
+#save physeq objects to load later
+```{r}
+save(physeq, file= "RData/physeq.RData")
+```

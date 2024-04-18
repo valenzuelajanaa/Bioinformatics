@@ -1,0 +1,7 @@
+"bwa": "/Users/valenzuelajanaa/miniforge3/envs/genomeassembly/bin/spades-bwa"
+"dataset": "/Volumes/Janaa/Bioinformatics/AssemblyandAnnotation/sequences/spades_assembly_all_illumina/input_dataset.yaml"
+"log_filename": "log.properties"
+"max_nthreads": !!int "16"
+"output_dir": "/Volumes/Janaa/Bioinformatics/AssemblyandAnnotation/sequences/spades_assembly_all_illumina/mismatch_corrector/contigs"
+"strategy": "mapped_squared"
+"work_dir": "/Volumes/Janaa/Bioinformatics/AssemblyandAnnotation/sequences/spades_assembly_all_illumina/tmp/corrector_7w99kg3z"

@@ -1,0 +1,73 @@
+Command line: /Users/valenzuelajanaa/miniforge3/envs/genomeassembly/bin/spades.py	-1	/Volumes/Janaa/Bioinformatics/AssemblyandAnnotation/sequences/reads1.fastq.gz	-2	/Volumes/Janaa/Bioinformatics/AssemblyandAnnotation/sequences/reads2.fastq.gz	--careful	--cov-cutoff	auto	-o	/Volumes/Janaa/Bioinformatics/AssemblyandAnnotation/sequences/spades_assembly_all_illumina	
+
+System information:
+  SPAdes version: 3.15.2
+  Python version: 3.7.12
+  OS: Darwin-23.4.0-x86_64-i386-64bit
+
+Output dir: /Volumes/Janaa/Bioinformatics/AssemblyandAnnotation/sequences/spades_assembly_all_illumina
+Mode: read error correction and assembling
+Debug mode is turned OFF
+
+Dataset parameters:
+  Standard mode
+  For multi-cell/isolate data we recommend to use '--isolate' option; for single-cell MDA data use '--sc'; for metagenomic data use '--meta'; for RNA-Seq use '--rna'.
+  Reads:
+    Library number: 1, library type: paired-end
+      orientation: fr
+      left reads: ['/Volumes/Janaa/Bioinformatics/AssemblyandAnnotation/sequences/reads1.fastq.gz']
+      right reads: ['/Volumes/Janaa/Bioinformatics/AssemblyandAnnotation/sequences/reads2.fastq.gz']
+      interlaced reads: not specified
+      single reads: not specified
+      merged reads: not specified
+Read error correction parameters:
+  Iterations: 1
+  PHRED offset will be auto-detected
+  Corrected reads will be compressed
+Assembly parameters:
+  k: automatic selection based on read length
+  Repeat resolution is enabled
+  Mismatch careful mode is turned ON
+  MismatchCorrector will be used
+  Coverage cutoff is turned ON and threshold will be auto-detected
+Other parameters:
+  Dir for temp files: /Volumes/Janaa/Bioinformatics/AssemblyandAnnotation/sequences/spades_assembly_all_illumina/tmp
+  Threads: 16
+  Memory limit (in Gb): 250
+
+
+======= SPAdes pipeline started. Log can be found here: /Volumes/Janaa/Bioinformatics/AssemblyandAnnotation/sequences/spades_assembly_all_illumina/spades.log
+
+/Volumes/Janaa/Bioinformatics/AssemblyandAnnotation/sequences/reads1.fastq.gz: max reads length: 151
+/Volumes/Janaa/Bioinformatics/AssemblyandAnnotation/sequences/reads2.fastq.gz: max reads length: 151
+
+Reads length: 151
+
+Default k-mer sizes were set to [21, 33, 55, 77] because estimated read length (151) is equal to or greater than 150
+
+===== Before start started. 
+
+
+===== Read error correction started. 
+
+
+===== Read error correction started. 
+
+
+== Running: /Users/valenzuelajanaa/miniforge3/envs/genomeassembly/bin/spades-hammer /Volumes/Janaa/Bioinformatics/AssemblyandAnnotation/sequences/spades_assembly_all_illumina/corrected/configs/config.info
+
+  0:00:00.000     1M / 8M    INFO    General                 (main.cpp                  :  75)   Starting BayesHammer, built from refs/heads/master, git revision 54bed604152fd271b68bdf7b78bfd0788ea9e431
+  0:00:00.017     1M / 8M    INFO    General                 (main.cpp                  :  76)   Loading config from /Volumes/Janaa/Bioinformatics/AssemblyandAnnotation/sequences/spades_assembly_all_illumina/corrected/configs/config.info
+  0:00:00.018     1M / 9M    INFO    General                 (main.cpp                  :  78)   Maximum # of threads to use (adjusted due to OMP capabilities): 8
+  0:00:00.018     1M / 9M    ERROR   General                 (memory_limit.cpp          :  47)   setrlimit(2) call failed, errno = 22
+
+
+== Error ==  system call for: "['/Users/valenzuelajanaa/miniforge3/envs/genomeassembly/bin/spades-hammer', '/Volumes/Janaa/Bioinformatics/AssemblyandAnnotation/sequences/spades_assembly_all_illumina/corrected/configs/config.info']" finished abnormally, OS return value: 22
+
+In case you have troubles running SPAdes, you can write to spades.support@cab.spbu.ru
+or report an issue on our GitHub repository github.com/ablab/spades
+Please provide us with params.txt and spades.log files from the output directory.
+
+SPAdes log can be found here: /Volumes/Janaa/Bioinformatics/AssemblyandAnnotation/sequences/spades_assembly_all_illumina/spades.log
+
+Thank you for using SPAdes!
