@@ -5,32 +5,30 @@ date: "2024-04-18"
 output: pdf_document
 ---
 
-#instal BiocManager
-```{r}
-(!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-BiocManager::install(version = "3.18")
-BiocManager::install(c("Phyloseq))
-```
 #load required packages
+
 ```{r}
 library(phyloseq)
 library(dplyr)
 library(BiMiCo)
-``` 
+library(ggplot2)
+```
 
 #load taxa and seqtab.nochim
+
 ```{r}
 load("RData/taxa.RData")
 load("RData/seqtab.nochim.RData")
 ```
 
 #import metadata
+
 ```{r}
 metadata <- read.csv("sample-metadata.csv", header=TRUE, row.names = 1)
 ```
 
 #create phylseq object
+
 ```{r}
 #make sure the seqtab.nochim and taxa objects are loaded
 physeq <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows=FALSE), sample_data(metadata),tax_table(taxa))
@@ -38,6 +36,7 @@ physeq
 ```
 
 #transform sample counts
+
 ```{r}
 #convert from raw to abundance so its easier to comapre
 physeq <- transform_sample_counts(physeq, function(abund) 1*(abund>0))
@@ -47,6 +46,7 @@ physeq
 ```
 
 #remove the sequence itselt and replace with ASV
+
 ```{r}
 ##this allows it to be easier to read, replaces the raw data
 dna <- Biostrings::DNAStringSet(taxa_names(physeq))
@@ -55,19 +55,141 @@ physeq <- merge_phyloseq(physeq, dna)
 taxa_names(physeq) <- paste0("ASV", seq(ntaxa(physeq)))
 physeq
 ```
+
 #remove mitochondria and phloroplast mathces, remove all non bacterial sequences
+
 ```{r}
 #stictly use bacteria 16S rRNA, 
 physeq <- physeq %>% subset_taxa( Family!= "Mitochondria" | is.na(Family) & Order!="Chloroplast" | is.na(Order))
 physeq
 ```
+
 #remove all non bacterial sequences
+
 ```{r}
 physeq<-rm_nonbac(physeq)
 physeq
 ```
 
 #save physeq objects to load later
+
 ```{r}
 save(physeq, file= "RData/physeq.RData")
+```
+
+#load physeq objects to start here
+
+```{r}
+load("RData/physeq.RData")
+```
+
+#plot bar grpah based on phylum
+
+```{r}
+plot_bar(physeq, fill = "Phylum") + geom_bar(aes(color=Phylum, fill=Phylum), stat="identity", position="fill")
+```
+
+#create a barplot of relative abundance
+
+```{r}
+#convert to relative abundance
+physeq_relabund <- transform_sample_counts(physeq, function(x) x / sum(x))
+
+#barplot
+plot_bar(physeq_relabund, fill = "Phylum") + geom_bar(aes(color=Phylum, fill=Phylum), stat="identity", position="fill") + facet_wrap(~body.site, scales= "free")
+##can change based on the column name in metadata in facet_wrap(~columnName)
+```
+
+#plot alpha diversity based on body site
+
+```{r}
+plot_richness(physeq, x="body.site", color= "subject", measures=c("Observed", "Simpson", "Shannon"))
+##Simpson(less sensitive, will be more custered together) and Shannon(more sensitive to rare taxa) take into consideration relative abundance each species.
+```
+
+#pplot alpha diversity based on reported.antibiotic.usage
+
+```{r}
+plot_richness(physeq, x="reported.antibiotic.usage", color= "body.site", measures=c("Observed", "Simpson", "Shannon"))
+```
+
+#plot alpha diversity based on subject
+
+```{r}
+plot_richness(physeq, x="subject", color= "body.site", measures=c("Observed", "Simpson", "Shannon"))
+```
+
+#test for normailoty
+
+```{r}
+alpha <- estimate_richness(physeq, measures=c("Observed", "Simpson", "Shannon"))
+
+#alternative = the data is normal distributed
+#null = the data is not normal distributed
+
+#Shapiro-wilk - used when it has fewer than 50 samples 
+observed <- shapiro.test(alpha$Observed)
+shannon <- shapiro.test(alpha$Shannon)
+simpson <- shapiro.test(alpha$Simpson)
+
+#print
+print(observed)
+print(shannon)
+print(simpson)
+```
+
+#create data frames for statistical analyses
+
+```{r}
+#extract sample information from the physeq object
+samples <- sample_data(physeq)
+
+#if sample is a phyloseq sample_Data, convert it to a data frame
+if (class(samples) == "sample_data") {
+  samples <- data.frame(sample_data(samples))
+  }
+
+#add a column to alpha with sample names
+alpha$sample <- rownames(alpha)
+
+#merge alpha diversity data and sample(meta) data 
+alpha <- merge(alpha, samples, by = "sample")
+```
+
+#perform statistics based on subject
+
+```{r}
+#perform t/wilcox tests for each biodiversity index
+test_observed <- wilcox.test(Observed ~ subject, data = alpha)
+test_simpson <- wilcox.test(Simpson ~ subject, data = alpha)
+test_shannon <- t.test(Shannon ~ subject, data = alpha)
+
+#print results
+print(test_observed)
+print(test_simpson)
+print(test_shannon)
+```
+###to change text, select chunk > edit > find >click in selection > replace these tabs with what you ant to change; find - replace > all
+
+#perform statistics based on reported.anitbiotic.usage
+```{r}
+#perform t/wilcox tests for each biodiversity index
+test_observed <- wilcox.test(Observed ~ reported.antibiotic.usage, data = alpha)
+test_simpson <- wilcox.test(Simpson ~ reported.antibiotic.usage, data = alpha)
+test_shannon <- t.test(Shannon ~ reported.antibiotic.usage, data = alpha)
+
+#print results
+print(test_observed)
+print(test_simpson)
+print(test_shannon)
+```
+#test for body site
+```{r}
+kruskal.test(Simpson ~ body.site, data=alpha)
+pairwise.wilcox.test(alpha$Simpson, alpha$body.site, p.adjust.method = "holm")
+kruskal.test(Observed ~ body.site, data=alpha)
+pairwise.wilcox.test(alpha$Observed, alpha$body.site, p.adjust.method = "holm")
+shannonanova <- aov(Shannon ~ body.site, data=alpha)
+summary(shannonanova)
+TukeyHSD(shannonanova)
 ```
