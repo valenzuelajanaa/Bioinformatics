@@ -122,23 +122,10 @@ plot_richness(physeq, x="reported.antibiotic.usage", color= "body.site", measure
 plot_richness(physeq, x="subject", color= "body.site", measures=c("Observed", "Simpson", "Shannon"))
 ```
 
-#test for normailoty
-
+#plot alpha diversity based on bird
 ```{r}
-alpha <- estimate_richness(physeq, measures=c("Observed", "Simpson", "Shannon"))
-
-#alternative = the data is normal distributed
-#null = the data is not normal distributed
-
-#Shapiro-wilk - used when it has fewer than 50 samples 
-observed <- shapiro.test(alpha$Observed)
-shannon <- shapiro.test(alpha$Shannon)
-simpson <- shapiro.test(alpha$Simpson)
-
-#print
-print(observed)
-print(shannon)
-print(simpson)
+plot_richness(physeq, x="bird", color= "population", measures=c("Observed", "Simpson", "Shannon"))
+##Simpson(less sensitive, will be more custered together) and Shannon(more sensitive to rare taxa) take into consideration relative abundance each species.
 ```
 
 #create data frames for statistical analyses
@@ -279,7 +266,7 @@ ggsave(
   plot = braybodysite,
   width = 200,
   height = 200,
-  units = c("mm"),
+  units = "mm",
   dpi = 300
 ```
   
