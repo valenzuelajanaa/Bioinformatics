@@ -1,0 +1,282 @@
+---
+title: "MicrobiomeSequence"
+author: "Alejandra"
+date: "2024-04-21"
+output: pdf_document
+---
+
+#load required packages
+```{r}
+library(dada2)
+library(Biostrings)
+library(ShortRead)
+library(phyloseq)
+library(dplyr)
+library(BiMiCo)
+library(ggplot2)
+library(devtools)
+library(MicEco)
+library(vegan)
+```
+
+#load sequences
+```{r}
+path <- "sequences"
+list.files(path)
+```
+#read file names
+```{r}
+fnFs <- sort(list.files(path, pattern="_R1_001.fastq", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_R2_001.fastq", full.names = TRUE))
+#extract file names
+sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
+```
+
+#inspect file quality of forward and reverse reads
+```{r}
+plotQualityProfile(fnFs[1:2])
+plotQualityProfile(fnRs[1:2])
+```
+#filter and trim
+```{r}
+#place filtered files in filtered/ subdirectory 
+filtFs <- file.path(path, "filtered", paste0(sample.names, "_F_filt.fastq.gz"))
+filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
+names(filtFs) <- sample.names
+names(filtRs) <- sample.names
+out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(200,200),
+              maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
+              compress=TRUE, multithread=TRUE) 
+head(out)
+```
+
+#learn error rates of reads
+```{r}
+##learn error rates of forward and reverse reads
+errF <- learnErrors(filtFs, multithread=TRUE)
+errR <- learnErrors(filtRs, multithread=TRUE)
+```
+
+#visulaize error rate
+```{r}
+plotErrors(errF, nominalQ=TRUE)
+plotErrors(errR, nominalQ=TRUE)
+```
+
+#will take reads and show how many sequences/species are in the sample
+```{r}
+dadaFs <- dada(filtFs, err=errF, multithread=TRUE)
+dadaRs <- dada(filtRs, err=errR, multithread=TRUE)
+dadaFs[[1]]
+```
+#merge paired reads
+```{r}
+mergers <- mergePairs(dadaFs, filtFs, dadaRs, filtRs, verbose=TRUE)
+# Inspect the merger data.frame from the first sample
+head(mergers[[1]])
+```
+
+#construct sequence table to see how many sequences are present and length
+```{r}
+seqtab <- makeSequenceTable(mergers)
+dim(seqtab)
+# Inspect distribution of sequence lengths
+table(nchar(getSequences(seqtab)))
+```
+
+#remove chimeras (two sperate reads that got smashed together)
+```{r}
+seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
+dim(seqtab.nochim)
+sum(seqtab.nochim)/sum(seqtab)
+```
+
+#track reads (which step lost reads)
+```{r}
+getN <- function(x) sum(getUniques(x))
+track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim))
+colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nonchim")
+rownames(track) <- sample.names
+head(track)
+```
+
+#save setab.nochim as an R file
+```{r}
+save(seqtab.nochim, file= "RData/seqtab.nochim.RData")
+```
+
+#load seqtab.nochim
+```{r}
+load("RData/seqtab.nochim.RData")
+```
+
+#asign taxonomy
+```{r}
+taxa <- assignTaxonomy(seqtab.nochim, "silva_nr99_v138.1_wSpecies_train_set.fa.gz", multithread=TRUE)
+```
+
+```{r}
+save(taxa, file = "RData/taxa.RData")
+```
+
+#load taxa and seqtab.nochim
+```{r}
+load("RData/taxa.RData")
+load("RData/seqtab.nochim.RData")
+```
+
+#import metadata
+```{r}
+metadata <- read.csv("sample-metadata.csv", header=TRUE, row.names = 1)
+```
+
+#create physeq object
+```{r}
+physeq <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows = FALSE), 
+                 sample_data(metadata), 
+                 tax_table(taxa))
+physeq
+```
+
+#remove the sequence itselt and replace with ASV
+```{r}
+##this allows it to be easier to read, replaces the raw data
+dna <- Biostrings::DNAStringSet(taxa_names(physeq))
+names(dna) <- taxa_names(physeq)
+physeq <- merge_phyloseq(physeq, dna)
+taxa_names(physeq) <- paste0("ASV", seq(ntaxa(physeq)))
+physeq
+```
+
+#remove mitochondria and phloroplast mathces, remove all non bacterial sequences
+```{r}
+#stictly use bacteria 16S rRNA, 
+physeq <- physeq %>% subset_taxa( Family!= "Mitochondria" | is.na(Family) & Order!="Chloroplast" | is.na(Order))
+physeq
+```
+
+#remove all non bacterial sequences
+```{r}
+physeq<-rm_nonbac(physeq)
+physeq
+```
+
+#save physeq objects and load 
+```{r}
+save(physeq, file= "RData/physeq.RData")
+```
+
+```{r}
+load("RData/physeq.RData")
+```
+
+#plot bar grpah based on phylum
+```{r}
+plot_bar(physeq, fill = "Phylum") + geom_bar(aes(color=Phylum, fill=Phylum), stat="identity", position="fill")
+```
+
+#create a barplot of relative abundance
+```{r}
+#convert to relative abundance
+physeq_relabund <- transform_sample_counts(physeq, function(x) x / sum(x))
+
+#barplot
+plot_bar(physeq_relabund, fill = "Phylum") + geom_bar(aes(color=Phylum, fill=Phylum), stat="identity", position="fill") + facet_wrap(~population, scales= "free")
+##can change based on the column name in metadata in facet_wrap(~columnName)
+```
+
+#plot alpha diversity based on bird
+```{r}
+plot_richness(physeq, x="population", color= "sex", measures=c("Observed", "Simpson", "Shannon"))
+##Simpson(less sensitive, will be more custered together) and Shannon(more sensitive to rare taxa) take into consideration relative abundance each species.
+```
+
+#plot alpha diversity based on sex
+```{r}
+plot_richness(physeq, x="sex", color= "population", measures=c("Observed", "Simpson", "Shannon"))
+##Simpson(less sensitive, will be more custered together) and Shannon(more sensitive to rare taxa) take into consideration relative abundance each species.
+```
+#plot alpha diversity based on sex
+```{r}
+plot_richness(physeq, x="flock", color= "sex", measures=c("Observed", "Simpson", "Shannon"))
+##Simpson(less sensitive, will be more custered together) and Shannon(more sensitive to rare taxa) take into consideration relative abundance each species.
+```
+
+#remove taxa with relative abundance <0.05%
+```{r}
+minTotRelAbun = .00005
+x = taxa_sums(physeq)
+keepTaxa = (x / sum(x)) > minTotRelAbun
+physeqprune = prune_taxa(keepTaxa, physeq)
+physeqprune
+```
+
+#number of shared ASVs birds (found in 25% or more)
+```{r}
+#create a venn diagram showing the different categories and what they share
+flock=ps_venn(
+physeqprune,
+"flock", 
+fraction = .25, 
+weight = FALSE, 
+relative = TRUE, 
+plot = TRUE) 
+flock
+```
+
+
+#bray curtis caculation, 0; exactly the same, 1; very diverse 
+```{r message=FALSE}
+set.seed(666)
+dist = phyloseq::distance(physeqprune, method="bray", weighted=TRUE)
+ordination = ordinate(physeqprune, method="NMDS", distance=dist)
+```
+
+#bray curtis population plot
+```{r}
+braypopulation=plot_ordination(physeqprune, ordination, color="population") + theme_classic() +
+theme(strip.background = element_blank()) + stat_ellipse(aes(group=population))
+braypopulation
+```
+
+#bray curtis sex plot
+```{r}
+braysex=plot_ordination(physeqprune, ordination, color="sex") + theme_classic() +
+theme(strip.background = element_blank()) + stat_ellipse(aes(group=sex))
+braysex
+```
+#bray curtis flock plot
+```{r}
+brayflock=plot_ordination(physeqprune, ordination, color="flock") + theme_classic() +
+theme(strip.background = element_blank()) + stat_ellipse(aes(group=flock))
+brayflock
+```
+
+#bray curits statistics
+```{r}
+#population
+adonis2(dist ~ sample_data(physeqprune)$population)
+ps.disper <-betadisper(dist, sample_data(physeqprune)$population) 
+permutest(ps.disper, pair=TRUE)
+```
+
+```{r}
+#flock
+adonis2(dist ~ sample_data(physeqprune)$flock)
+ps.disper<-betadisper(dist, sample_data(physeqprune)$flock) 
+permutest(ps.disper, pair=TRUE)
+```
+
+```{r}
+#flock
+adonis2(dist ~ sample_data(physeqprune)$flock)
+ps.disper<-betadisper(dist, sample_data(physeqprune)$flock) 
+permutest(ps.disper, pair=TRUE)
+```
+##Question 10; Alpha diversity visualizes the relative abundances of taxas where as beta diversity observes the identity of each taxa in sample. 
+
+##Question 12; alpha diversity was plotted for variation in taxa between population, sex, and flock. Resident male showed to have the most alpha diversity when comparing relative abundance between flocks. Only 22 taxas where shared between flocks. Observed features measures the number of bacterial species present in the sample where the Shannon index takes into account the the relative abundance of each species present in the sample. 
+
+##Question 13; The bay curtis plot displayed that not much diversity was unique between population, sex, and flock. This indicates that taxa identiy were similair when taking into account these variables tested. 
+
+##Question 14; Performing the statistical analysis, this confirmed no significance between betaa diversity due to p values > 0.05.
